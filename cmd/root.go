@@ -10,7 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "dupefinder",
 	Short:   "Find duplicate files in a directory tree",
-	Version: "0.1.0",
+	Version: Version,
 }
 
 func Execute() {
