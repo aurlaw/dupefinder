@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -41,10 +43,9 @@ func runFind(cmd *cobra.Command, args []string) error {
 	root := args[0]
 	start := time.Now()
 
-	// TODO Phase 4: replace with signal.NotifyContext
-	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	// defer cancel()
-	// ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	// Parse min-size flag into bytes
 	minBytes, err := humanize.ParseBytes(minSize)
 	if err != nil {
@@ -68,17 +69,25 @@ func runFind(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "hashing files...\n")
 	jobs := make(chan finder.FileInfo, workers*2)
 	go func() {
+		defer close(jobs)
 		for _, f := range candidates {
-			jobs <- f
+			select {
+			case jobs <- f:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(jobs)
 	}()
 
-	resultsCh := finder.StartWorkers(cmd.Context(), jobs, workers)
+	resultsCh := finder.StartWorkers(ctx, jobs, workers)
 
 	results := make([]finder.HashResult, 0, len(candidates))
 	for r := range resultsCh {
 		results = append(results, r)
+	}
+
+	if ctx.Err() != nil {
+		fmt.Fprintln(os.Stderr, "scan cancelled")
 	}
 
 	// Step 4: group by hash, find duplicates

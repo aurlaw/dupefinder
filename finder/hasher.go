@@ -14,7 +14,10 @@ const chunkSize = 32 * 1024 // 32KB read buffer
 
 // HashFile reads the file at path and returns its SHA-256 hash as a hex string.
 // The file is streamed in chunks to avoid loading large files into memory.
-func HashFile(path string) (string, error) {
+func HashFile(ctx context.Context, path string) (string, error) {
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return "", fmt.Errorf("opening %s: %w", path, err)
@@ -48,7 +51,7 @@ func StartWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int) <-
 					if !ok {
 						return
 					}
-					hash, err := HashFile(f.Path)
+					hash, err := HashFile(ctx, f.Path)
 					results <- HashResult{Path: f.Path, Size: f.Size, Hash: hash, Error: err}
 				case <-ctx.Done():
 					return
