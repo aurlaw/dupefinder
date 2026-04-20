@@ -44,6 +44,10 @@ func runFind(cmd *cobra.Command, args []string) error {
 	root := args[0]
 	start := time.Now()
 
+	if format != "text" && format != "json" {
+		return fmt.Errorf("unsupported --format value %q: must be \"text\" or \"json\"", format)
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
@@ -118,7 +122,14 @@ func runFind(cmd *cobra.Command, args []string) error {
 	}
 
 	// Step 5: print report
-	reporter.PrintReport(report)
+	switch format {
+	case "json":
+		if err := reporter.PrintJSON(report); err != nil {
+			return fmt.Errorf("writing json output: %w", err)
+		}
+	default:
+		reporter.PrintReport(report)
+	}
 
 	return nil
 }

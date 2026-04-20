@@ -2,35 +2,31 @@ package finder
 
 import "time"
 
-// FileInfo represents a file candidate discovered during the walk.
 type FileInfo struct {
-	Path string
-	Size int64
+	Path string `json:"path"`
+	Size int64  `json:"size"`
 }
 
-// HashResult is the output from the hasher for a single file.
 type HashResult struct {
-	Path  string
-	Size  int64
-	Hash  string
-	Error error
+	Path  string `json:"path"`
+	Size  int64  `json:"size"`
+	Hash  string `json:"hash"`
+	Error error  `json:"-"`
 }
 
-// DuplicateGroup is a set of files with identical content.
 type DuplicateGroup struct {
-	Hash       string
-	Size       int64
-	Paths      []string
-	TotalWaste int64
+	Hash       string   `json:"hash"`
+	Size       int64    `json:"size"`
+	Paths      []string `json:"paths"`
+	TotalWaste int64    `json:"totalWaste"`
 }
 
-// Report is the final output passed to the reporter.
 type Report struct {
-	Groups      []DuplicateGroup
-	TotalFiles  int
-	Candidates  int
-	TotalDupes  int
-	WastedBytes int64
-	ElapsedTime time.Duration
-	Hardlinks   [][]string // pairs of paths that are hardlinks to the same inode
+	Groups      []DuplicateGroup `json:"groups"`
+	TotalFiles  int              `json:"totalFiles"`
+	Candidates  int              `json:"candidates"`
+	TotalDupes  int              `json:"totalDupes"`
+	WastedBytes int64            `json:"wastedBytes"`
+	ElapsedTime time.Duration    `json:"elapsedMs"`
+	Hardlinks   [][]string       `json:"hardlinks,omitempty"`
 }
