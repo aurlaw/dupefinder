@@ -6,9 +6,14 @@ import (
 )
 
 // Walk traverses root recursively, returning all files that meet the minimum
-// size threshold. Directories matching any name in excludes are skipped entirely.
-func Walk(root string, excludes []string, minSize int64) ([]FileInfo, error) {
+// size threshold and a list of hardlink pairs detected by inode tracking.
+// Directories matching any name in excludes are skipped entirely.
+// Symlinks are silently skipped. Hardlinked files appear only once in the
+// returned FileInfo slice; the pair is recorded in hardlinks instead.
+func Walk(root string, excludes []string, minSize int64) ([]FileInfo, [][]string, error) {
 	var files []FileInfo
+	var hardlinks [][]string
+	seenInodes := make(map[InodeKey]string)
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -25,7 +30,12 @@ func Walk(root string, excludes []string, minSize int64) ([]FileInfo, error) {
 			return nil
 		}
 
-		// Skip non-regular files (symlinks, pipes, devices)
+		// Skip symlinks explicitly
+		if d.Type()&fs.ModeSymlink != 0 {
+			return nil
+		}
+
+		// Skip non-regular files (pipes, devices, etc.)
 		if !d.Type().IsRegular() {
 			return nil
 		}
@@ -40,6 +50,19 @@ func Walk(root string, excludes []string, minSize int64) ([]FileInfo, error) {
 			return nil
 		}
 
+		// Hardlink detection via inode key
+		key, err := GetInodeKey(info)
+		if err != nil {
+			return err
+		}
+		if key != (InodeKey{}) { // zero value means Windows — skip tracking
+			if first, seen := seenInodes[key]; seen {
+				hardlinks = append(hardlinks, []string{first, path})
+				return nil // already counted under the first path
+			}
+			seenInodes[key] = path
+		}
+
 		files = append(files, FileInfo{
 			Path: path,
 			Size: info.Size(),
@@ -49,8 +72,8 @@ func Walk(root string, excludes []string, minSize int64) ([]FileInfo, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return files, nil
+	return files, hardlinks, nil
 }

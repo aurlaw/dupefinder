@@ -55,7 +55,7 @@ func runFind(cmd *cobra.Command, args []string) error {
 
 	// Step 1: walk the directory tree
 	fmt.Fprintf(os.Stderr, "walking %s...\n", root)
-	files, err := finder.Walk(root, excludes, int64(minBytes))
+	files, hardlinks, err := finder.Walk(root, excludes, int64(minBytes))
 	if err != nil {
 		return fmt.Errorf("walking directory: %w", err)
 	}
@@ -109,6 +109,7 @@ func runFind(cmd *cobra.Command, args []string) error {
 
 	report := finder.Report{
 		Groups:      groups,
+		Hardlinks:   hardlinks,
 		TotalFiles:  len(files),
 		Candidates:  len(candidates),
 		TotalDupes:  totalDupes,

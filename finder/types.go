@@ -32,4 +32,5 @@ type Report struct {
 	TotalDupes  int
 	WastedBytes int64
 	ElapsedTime time.Duration
+	Hardlinks   [][]string // pairs of paths that are hardlinks to the same inode
 }

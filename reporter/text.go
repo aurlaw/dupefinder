@@ -27,6 +27,14 @@ func PrintReport(r finder.Report) {
 		fmt.Println()
 	}
 
+	if len(r.Hardlinks) > 0 {
+		fmt.Println("hardlinks (same inode, not wasted space):")
+		for _, pair := range r.Hardlinks {
+			fmt.Printf("  %s  ↔  %s\n", pair[0], pair[1])
+		}
+		fmt.Println()
+	}
+
 	printSummary(r)
 }
 
@@ -35,6 +43,7 @@ func printSummary(r finder.Report) {
 	fmt.Printf("files scanned:   %d\n", r.TotalFiles)
 	fmt.Printf("candidates:      %d\n", r.Candidates)
 	fmt.Printf("duplicates:      %d\n", r.TotalDupes)
+	fmt.Printf("hardlinks:       %d\n", len(r.Hardlinks))
 	fmt.Printf("reclaimable:     %s\n", humanize.Bytes(uint64(r.WastedBytes)))
 	fmt.Printf("elapsed:         %s\n", r.ElapsedTime)
 }
