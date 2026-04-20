@@ -41,6 +41,10 @@ func runFind(cmd *cobra.Command, args []string) error {
 	root := args[0]
 	start := time.Now()
 
+	// TODO Phase 4: replace with signal.NotifyContext
+	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	// defer cancel()
+	// ctx := context.Background()
 	// Parse min-size flag into bytes
 	minBytes, err := humanize.ParseBytes(minSize)
 	if err != nil {
@@ -60,17 +64,21 @@ func runFind(cmd *cobra.Command, args []string) error {
 	candidates := finder.Flatten(sizeGroups)
 	fmt.Fprintf(os.Stderr, "%d candidates after size filter\n", len(candidates))
 
-	// Step 3: hash candidates only
+	// Step 3: hash candidates concurrently
 	fmt.Fprintf(os.Stderr, "hashing files...\n")
+	jobs := make(chan finder.FileInfo, workers*2)
+	go func() {
+		for _, f := range candidates {
+			jobs <- f
+		}
+		close(jobs)
+	}()
+
+	resultsCh := finder.StartWorkers(cmd.Context(), jobs, workers)
+
 	results := make([]finder.HashResult, 0, len(candidates))
-	for _, f := range candidates {
-		hash, err := finder.HashFile(f.Path)
-		results = append(results, finder.HashResult{
-			Path:  f.Path,
-			Size:  f.Size,
-			Hash:  hash,
-			Error: err,
-		})
+	for r := range resultsCh {
+		results = append(results, r)
 	}
 
 	// Step 4: group by hash, find duplicates

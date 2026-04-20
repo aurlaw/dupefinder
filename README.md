@@ -5,4 +5,6 @@ using a configurable worker pool, and reports duplicates grouped by content hash
 
 ----
 
-TODO
+```
+go run . find ./testdata --min-size 1B
+```

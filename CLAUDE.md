@@ -35,8 +35,4 @@ Orchestration lives in `cmd/find.go`. Types shared across packages are in `finde
 
 Test fixtures are in `testdata/` (a.txt, b.txt, c.txt, unique.txt).
 
-## Known Gaps
 
-- `startWorkers()` in `finder/hasher.go` panics — concurrent worker pool is not implemented.
-- `--format json` flag exists but JSON output is not implemented.
-- `--no-progress` flag exists but progress reporting is not implemented.

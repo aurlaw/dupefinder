@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 const chunkSize = 32 * 1024 // 32KB read buffer
@@ -30,15 +31,36 @@ func HashFile(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// startWorkers launches a pool of workerCount goroutines that read file candidates
+// StartWorkers launches a pool of workerCount goroutines that read file candidates
 // from jobs, hash each file, and send results to the returned channel.
 // The results channel is closed automatically when all workers have finished.
-func startWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int) <-chan HashResult {
-	// TODO: implement worker pool
-	// - create results channel (buffered, size = workerCount * 2)
-	// - spawn workerCount goroutines, each ranging over jobs
-	// - use sync.WaitGroup to close results when all workers done
-	// - each worker calls HashFile and sends a HashResult
-	// - respect ctx.Done() for cancellation
-	panic("not implemented")
+func StartWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int) <-chan HashResult {
+	results := make(chan HashResult, workerCount*2)
+	var wg sync.WaitGroup
+
+	for range workerCount {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case f, ok := <-jobs:
+					if !ok {
+						return
+					}
+					hash, err := HashFile(f.Path)
+					results <- HashResult{Path: f.Path, Size: f.Size, Hash: hash, Error: err}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	return results
 }

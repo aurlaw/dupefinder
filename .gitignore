@@ -50,3 +50,4 @@ trace.out
 
 # Test data generated during runs (keep static testdata/ committed)
 /testdata/tmp/
+node_modules/
