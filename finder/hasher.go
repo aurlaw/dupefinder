@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"sync"
+
+	"github.com/aurlaw/dupefinder/progress"
 )
 
 const chunkSize = 32 * 1024 // 32KB read buffer
@@ -37,7 +39,7 @@ func HashFile(ctx context.Context, path string) (string, error) {
 // StartWorkers launches a pool of workerCount goroutines that read file candidates
 // from jobs, hash each file, and send results to the returned channel.
 // The results channel is closed automatically when all workers have finished.
-func StartWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int) <-chan HashResult {
+func StartWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int, stats chan<- progress.Stats) <-chan HashResult {
 	results := make(chan HashResult, workerCount*2)
 	var wg sync.WaitGroup
 
@@ -53,6 +55,12 @@ func StartWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int) <-
 					}
 					hash, err := HashFile(ctx, f.Path)
 					results <- HashResult{Path: f.Path, Size: f.Size, Hash: hash, Error: err}
+					if err == nil {
+						select {
+						case stats <- progress.Stats{FilesHashed: 1, BytesHashed: f.Size}:
+						default:
+						}
+					}
 				case <-ctx.Done():
 					return
 				}

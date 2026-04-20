@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aurlaw/dupefinder/finder"
+	"github.com/aurlaw/dupefinder/progress"
 	"github.com/aurlaw/dupefinder/reporter"
 )
 
@@ -66,7 +67,9 @@ func runFind(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "%d candidates after size filter\n", len(candidates))
 
 	// Step 3: hash candidates concurrently
-	fmt.Fprintf(os.Stderr, "hashing files...\n")
+	statsCh := make(chan progress.Stats, 100)
+	reporterDone := progress.StartReporter(ctx, statsCh, noProgress)
+
 	jobs := make(chan finder.FileInfo, workers*2)
 	go func() {
 		defer close(jobs)
@@ -79,12 +82,15 @@ func runFind(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	resultsCh := finder.StartWorkers(ctx, jobs, workers)
+	resultsCh := finder.StartWorkers(ctx, jobs, workers, statsCh)
 
 	results := make([]finder.HashResult, 0, len(candidates))
 	for r := range resultsCh {
 		results = append(results, r)
 	}
+
+	close(statsCh)
+	<-reporterDone
 
 	if ctx.Err() != nil {
 		fmt.Fprintln(os.Stderr, "scan cancelled")
