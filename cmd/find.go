@@ -55,10 +55,15 @@ func runFind(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(os.Stderr, "found %d files\n", len(files))
 
-	// Step 2: hash each file sequentially
+	// Step 2: pre-filter by size — drop files with unique sizes
+	sizeGroups := finder.GroupBySize(files)
+	candidates := finder.Flatten(sizeGroups)
+	fmt.Fprintf(os.Stderr, "%d candidates after size filter\n", len(candidates))
+
+	// Step 3: hash candidates only
 	fmt.Fprintf(os.Stderr, "hashing files...\n")
-	results := make([]finder.HashResult, 0, len(files))
-	for _, f := range files {
+	results := make([]finder.HashResult, 0, len(candidates))
+	for _, f := range candidates {
 		hash, err := finder.HashFile(f.Path)
 		results = append(results, finder.HashResult{
 			Path:  f.Path,
@@ -68,10 +73,10 @@ func runFind(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	// Step 3: group by hash, find duplicates
+	// Step 4: group by hash, find duplicates
 	groups := finder.GroupByHash(results)
 
-	// Step 4: build report
+	// Step 5: build report
 	var totalWaste int64
 	var totalDupes int
 	for _, g := range groups {
@@ -82,7 +87,7 @@ func runFind(cmd *cobra.Command, args []string) error {
 	report := finder.Report{
 		Groups:      groups,
 		TotalFiles:  len(files),
-		Candidates:  len(files),
+		Candidates:  len(candidates),
 		TotalDupes:  totalDupes,
 		WastedBytes: totalWaste,
 		ElapsedTime: time.Since(start),

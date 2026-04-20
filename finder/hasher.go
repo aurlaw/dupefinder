@@ -1,6 +1,7 @@
 package finder
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -27,4 +28,17 @@ func HashFile(path string) (string, error) {
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// startWorkers launches a pool of workerCount goroutines that read file candidates
+// from jobs, hash each file, and send results to the returned channel.
+// The results channel is closed automatically when all workers have finished.
+func startWorkers(ctx context.Context, jobs <-chan FileInfo, workerCount int) <-chan HashResult {
+	// TODO: implement worker pool
+	// - create results channel (buffered, size = workerCount * 2)
+	// - spawn workerCount goroutines, each ranging over jobs
+	// - use sync.WaitGroup to close results when all workers done
+	// - each worker calls HashFile and sends a HashResult
+	// - respect ctx.Done() for cancellation
+	panic("not implemented")
 }
